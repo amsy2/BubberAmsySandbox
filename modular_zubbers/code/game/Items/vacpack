@@ -1,0 +1,138 @@
+/obj/item/xenobio_vacpack
+	name = "slime vacpack"
+	desc = "Slime rancher time"
+	icon = 'icons/obj/service/hydroponics/equipment.dmi'
+	icon_state = "waterbackpack"
+	inhand_icon_state = "waterbackpack"
+	lefthand_file = 'icons/mob/inhands/equipment/backpack_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/equipment/backpack_righthand.dmi'
+	w_class = WEIGHT_CLASS_BULKY
+	slot_flags = ITEM_SLOT_BACK
+	slowdown = 1
+	actions_types = list(/datum/action/item_action/toggle_mister)
+	max_integrity = 200
+	armor_type = /datum/armor/item_watertank
+	resistance_flags = FIRE_PROOF
+	interaction_flags_mouse_drop = ALLOW_RESTING
+
+	var/obj/item/xeno_noz
+	var/volume = 500
+
+/datum/armor/item_watertank
+	fire = 100
+	acid = 30
+
+/obj/item/xenobio_vacpack/Initialize(mapload)
+	. = ..()
+	create_reagents(volume, OPENCONTAINER)
+	xeno_noz = make_xeno_noz()
+	RegisterSignal(xeno_noz, COMSIG_MOVABLE_MOVED, PROC_REF(xeno_noz_move))
+
+/obj/item/xenobio_vacpack/Destroy()
+	QDEL_NULL(xeno_noz)
+	return ..()
+
+
+/obj/item/xenobio_vacpack/ui_action_click(mob/user)
+	toggle_mister(user)
+
+/obj/item/xenobio_vacpack/proc/toggle_mister(mob/living/user)
+	if(!istype(user))
+		return
+	if(user.get_item_by_slot(user.getBackSlot()) != src)
+		to_chat(user, span_warning("The watertank must be worn properly to use!"))
+		return
+	if(user.incapacitated)
+		return
+
+	if(QDELETED(xeno_noz))
+		xeno_noz = make_xeno_noz()
+		RegisterSignal(xeno_noz, COMSIG_MOVABLE_MOVED, PROC_REF(xeno_noz_move))
+	if(xeno_noz in src)
+		//Detach the xeno_nozzle into the user's hands
+		if(!user.put_in_hands(xeno_noz))
+			to_chat(user, span_warning("You need a free hand to hold the mister!"))
+			return
+	else
+		//Remove from their hands and put back "into" the tank
+		remove_xeno_noz()
+
+/obj/item/xenobio_vacpack/verb/toggle_mister_verb()
+	set name = "Toggle Mister"
+	set category = "Object"
+	toggle_mister(usr)
+
+/obj/item/xenobio_vacpack/proc/make_xeno_noz()
+	return new /obj/item/reagent_containers/spray/mister(src)
+
+/obj/item/xenobio_vacpack/proc/xeno_noz_move(atom/movable/mover, atom/oldloc, direction)
+	if(mover.loc == src || mover.loc == loc)
+		return
+	balloon_alert(loc, "xeno_nozzle snaps back")
+	mover.forceMove(src)
+
+/obj/item/xenobio_vacpack/equipped(mob/user, slot)
+	..()
+	if(!(slot & ITEM_SLOT_BACK))
+		remove_xeno_noz()
+
+/obj/item/xenobio_vacpack/proc/remove_xeno_noz()
+	if(!QDELETED(xeno_noz))
+		if(ismob(xeno_noz.loc))
+			var/mob/M = xeno_noz.loc
+			M.temporarilyRemoveItemFromInventory(xeno_noz, TRUE)
+		xeno_noz.forceMove(src)
+
+/obj/item/xenobio_vacpack/attack_hand(mob/user, list/modifiers)
+	if (user.get_item_by_slot(user.getBackSlot()) == src)
+		toggle_mister(user)
+	else
+		return ..()
+
+/obj/item/xenobio_vacpack/mouse_drop_dragged(atom/over_object)
+	var/mob/M = loc
+	if(istype(M) && istype(over_object, /atom/movable/screen/inventory/hand))
+		var/atom/movable/screen/inventory/hand/H = over_object
+		M.putItemFromInventoryInHandIfPossible(src, H.held_index)
+
+/obj/item/xenobio_vacpack/attackby(obj/item/attacking_item, mob/user, list/modifiers, list/attack_modifiers)
+	if(attacking_item == xeno_noz)
+		remove_xeno_noz()
+		return TRUE
+	else
+		return ..()
+
+/obj/item/xenobio_vacpack/dropped(mob/user)
+	..()
+	remove_xeno_noz()
+
+// This mister item is intended as an extension of the watertank and always attached to it.
+// Therefore, it's designed to be "locked" to the player's hands or extended back onto
+// the watertank backpack. Allowing it to be placed elsewhere or created without a parent
+// watertank object will likely lead to weird behaviour or runtimes.
+/obj/item/reagent_containers/spray/mister
+	name = "water mister"
+	desc = "A mister xeno_nozzle attached to a water tank."
+	icon = 'icons/obj/service/hydroponics/equipment.dmi'
+	icon_state = "mister"
+	inhand_icon_state = "mister"
+	lefthand_file = 'icons/mob/inhands/equipment/mister_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/equipment/mister_righthand.dmi'
+	w_class = WEIGHT_CLASS_BULKY
+	amount_per_transfer_from_this = 50
+	possible_transfer_amounts = list(50)
+	can_toggle_range = FALSE
+	volume = 500
+	item_flags = NOBLUDGEON | ABSTRACT  // don't put in storage
+	slot_flags = NONE
+
+/obj/item/reagent_containers/spray/mister/Initialize(mapload)
+	. = ..()
+	if(!loc?.reagents)
+		return INITIALIZE_HINT_QDEL
+	reagents = loc.reagents //This mister is really just a proxy for the tank's reagents
+
+/obj/item/reagent_containers/spray/mister/try_spray(atom/target, mob/user)
+	if(target.loc == loc) //Safety check so you don't fill your mister with mutagen or something and then blast yourself in the face with it
+		return FALSE
+	return ..()
