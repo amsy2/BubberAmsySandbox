@@ -2,8 +2,8 @@
 	name = "slime vacpack"
 	desc = "Slime rancher time"
 	icon = 'icons/obj/service/hydroponics/equipment.dmi'
-	icon_state = "waterbackpack"
-	inhand_icon_state = "waterbackpack"
+	icon_state = "waterbackpackatmos"
+	inhand_icon_state = "waterbackpackatmos"
 	lefthand_file = 'icons/mob/inhands/equipment/backpack_lefthand.dmi'
 	righthand_file = 'icons/mob/inhands/equipment/backpack_righthand.dmi'
 	w_class = WEIGHT_CLASS_BULKY
@@ -63,7 +63,7 @@
 	toggle_mister(usr)
 
 /obj/item/xenobio_vacpack/proc/make_xeno_noz()
-	return new /obj/item/reagent_containers/spray/mister(src)
+	return new /obj/item/vacpack_nozzle(src)
 
 /obj/item/xenobio_vacpack/proc/xeno_noz_move(atom/movable/mover, atom/oldloc, direction)
 	if(mover.loc == src || mover.loc == loc)
@@ -106,33 +106,61 @@
 	..()
 	remove_xeno_noz()
 
-// This mister item is intended as an extension of the watertank and always attached to it.
-// Therefore, it's designed to be "locked" to the player's hands or extended back onto
-// the watertank backpack. Allowing it to be placed elsewhere or created without a parent
-// watertank object will likely lead to weird behaviour or runtimes.
-/obj/item/reagent_containers/spray/mister
-	name = "water mister"
-	desc = "A mister xeno_nozzle attached to a water tank."
+// The nozzle for picking mobs up
+/obj/item/vacpack_nozzle
+	name = "vacpack nozzle"
+	desc = "Just point and hold trigger to either suck something in or to spit it out."
+	w_class = WEIGHT_CLASS_SMALL
 	icon = 'icons/obj/service/hydroponics/equipment.dmi'
-	icon_state = "mister"
-	inhand_icon_state = "mister"
-	lefthand_file = 'icons/mob/inhands/equipment/mister_lefthand.dmi'
-	righthand_file = 'icons/mob/inhands/equipment/mister_righthand.dmi'
-	w_class = WEIGHT_CLASS_BULKY
-	amount_per_transfer_from_this = 50
-	possible_transfer_amounts = list(50)
-	can_toggle_range = FALSE
-	volume = 500
-	item_flags = NOBLUDGEON | ABSTRACT  // don't put in storage
-	slot_flags = NONE
+	icon_state = "atmos_nozzle"
+	///traits we give and remove from the mob on exit and entry
+	var/static/list/traits_on_transfer = list(
+		TRAIT_IMMOBILIZED,
+		TRAIT_HANDS_BLOCKED,
+		TRAIT_AI_PAUSED,
+	)
 
-/obj/item/reagent_containers/spray/mister/Initialize(mapload)
-	. = ..()
-	if(!loc?.reagents)
-		return INITIALIZE_HINT_QDEL
-	reagents = loc.reagents //This mister is really just a proxy for the tank's reagents
+/obj/item/vacpack_nozzle/ranged_interact_with_atom(atom/target, mob/living/user, list/modifiers)
+	var/mob/living/vac_target = target
+	if(length(contents))
+		to_chat(user, span_warning("The device already has something inside."))
+		return
+	if(!isanimal_or_basicmob(vac_target))
+		to_chat(user, span_warning("The capture device only works on simple creatures."))
+		return
+	if(vac_target.mind)
+		to_chat(user, span_notice("You offer the device to [vac_target]."))
+		if(tgui_alert(vac_target, "Would you like to enter [user]'s vacpack?", "Xenobio Vacpack", list("Yes", "No")) == "Yes")
+			if(user.can_perform_action(src) && user.can_perform_action(vac_target))
+				to_chat(user, span_notice("You store [vac_target] in the capture device."))
+				to_chat(vac_target, span_notice("The world warps around you, and you're suddenly in an endless void, with a window to the outside floating in front of you."))
+				store(vac_target, user)
+			else
+				to_chat(user, span_warning("You were too far away from [vac_target]."))
+				to_chat(vac_target, span_warning("You were too far away from [user]."))
+		else
+			to_chat(user, span_warning("[vac_target] refused to enter the device."))
+			return
+	else if(!(FACTION_NEUTRAL in vac_target.faction))
+		to_chat(user, span_warning("This creature is too aggressive to capture."))
+		return
+	to_chat(user, span_notice("You store [vac_target] in the capture device."))
+	store(vac_target)
 
-/obj/item/reagent_containers/spray/mister/try_spray(atom/target, mob/user)
-	if(target.loc == loc) //Safety check so you don't fill your mister with mutagen or something and then blast yourself in the face with it
-		return FALSE
-	return ..()
+/obj/item/vacpack_nozzle/attack_self(mob/user)
+	if(contents.len)
+		to_chat(user, span_notice("You open the capture device!"))
+		release()
+	else
+		to_chat(user, span_warning("The device is empty..."))
+
+/obj/item/vacpack_nozzle/proc/store(mob/living/vac_target)
+	vac_target.forceMove(src)
+	vac_target.add_traits(traits_on_transfer, ABSTRACT_ITEM_TRAIT)
+	vac_target.cancel_camera()
+
+/obj/item/vacpack_nozzle/proc/release()
+	for(var/mob/living/vac_target in contents)
+		vac_target.forceMove(get_turf(loc))
+		vac_target.remove_traits(traits_on_transfer, ABSTRACT_ITEM_TRAIT)
+		vac_target.cancel_camera()
