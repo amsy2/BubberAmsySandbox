@@ -68,7 +68,7 @@
 /obj/item/xenobio_vacpack/proc/xeno_noz_move(atom/movable/mover, atom/oldloc, direction)
 	if(mover.loc == src || mover.loc == loc)
 		return
-	balloon_alert(loc, "xeno_nozzle snaps back")
+	balloon_alert(loc, "vacpack nozzle snaps back")
 	mover.forceMove(src)
 
 /obj/item/xenobio_vacpack/equipped(mob/user, slot)
