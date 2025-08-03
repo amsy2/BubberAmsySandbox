@@ -9,7 +9,7 @@
 	w_class = WEIGHT_CLASS_BULKY
 	slot_flags = ITEM_SLOT_BACK
 	slowdown = 1
-	actions_types = list(/datum/action/item_action/toggle_mister)
+	actions_types = list(/datum/action/item_action/toggle_nozzle)
 	max_integrity = 200
 	armor_type = /datum/armor/item_watertank
 	resistance_flags = FIRE_PROOF
@@ -17,6 +17,7 @@
 
 	var/obj/item/xeno_noz
 	var/volume = 500
+	var/maxslots = 5
 
 /datum/armor/item_watertank
 	fire = 100
@@ -24,19 +25,18 @@
 
 /obj/item/xenobio_vacpack/Initialize(mapload)
 	. = ..()
-	create_reagents(volume, OPENCONTAINER)
 	xeno_noz = make_xeno_noz()
 	RegisterSignal(xeno_noz, COMSIG_MOVABLE_MOVED, PROC_REF(xeno_noz_move))
+	var/stored_mobs = list()
 
 /obj/item/xenobio_vacpack/Destroy()
 	QDEL_NULL(xeno_noz)
 	return ..()
 
-
 /obj/item/xenobio_vacpack/ui_action_click(mob/user)
-	toggle_mister(user)
+	toggle_nozzle(user)
 
-/obj/item/xenobio_vacpack/proc/toggle_mister(mob/living/user)
+/obj/item/xenobio_vacpack/proc/toggle_nozzle(mob/living/user)
 	if(!istype(user))
 		return
 	if(user.get_item_by_slot(user.getBackSlot()) != src)
@@ -113,6 +113,9 @@
 	w_class = WEIGHT_CLASS_SMALL
 	icon = 'icons/obj/service/hydroponics/equipment.dmi'
 	icon_state = "atmos_nozzle"
+	inhand_icon_state = "nozzleatmos"
+	lefthand_file = 'icons/mob/inhands/equipment/mister_lefthand.dmi'
+	righthand_file = 'icons/mob/inhands/equipment/mister_righthand.dmi'
 	///traits we give and remove from the mob on exit and entry
 	var/static/list/traits_on_transfer = list(
 		TRAIT_IMMOBILIZED,
@@ -120,7 +123,17 @@
 		TRAIT_AI_PAUSED,
 	)
 
-/obj/item/vacpack_nozzle/ranged_interact_with_atom(atom/target, mob/living/user, list/modifiers)
+/datum/action/item_action/toggle_nozzle
+	name = "Toggle Nozzle"
+
+/obj/item/vacpack_nozzle/ranged_interact_with_atom(atom/target, mob/user)
+	if(contents.len)
+		to_chat(user, span_notice("You shoot with the vacpack!"))
+		release(target, user)
+	else
+		to_chat(user, span_warning("The device is empty..."))
+
+/obj/item/vacpack_nozzle/ranged_interact_with_atom_secondary(atom/target, mob/living/user, list/modifiers)
 	var/mob/living/vac_target = target
 	if(length(contents))
 		to_chat(user, span_warning("The device already has something inside."))
@@ -129,38 +142,32 @@
 		to_chat(user, span_warning("The capture device only works on simple creatures."))
 		return
 	if(vac_target.mind)
-		to_chat(user, span_notice("You offer the device to [vac_target]."))
+		to_chat(user, span_notice("You offer the nozzle to [vac_target]."))
 		if(tgui_alert(vac_target, "Would you like to enter [user]'s vacpack?", "Xenobio Vacpack", list("Yes", "No")) == "Yes")
 			if(user.can_perform_action(src) && user.can_perform_action(vac_target))
-				to_chat(user, span_notice("You store [vac_target] in the capture device."))
+				to_chat(user, span_notice("You store [vac_target] in the vacpack."))
 				to_chat(vac_target, span_notice("The world warps around you, and you're suddenly in an endless void, with a window to the outside floating in front of you."))
 				store(vac_target, user)
 			else
 				to_chat(user, span_warning("You were too far away from [vac_target]."))
 				to_chat(vac_target, span_warning("You were too far away from [user]."))
 		else
-			to_chat(user, span_warning("[vac_target] refused to enter the device."))
+			to_chat(user, span_warning("[vac_target] refused to enter the vacpack."))
 			return
 	else if(!(FACTION_NEUTRAL in vac_target.faction))
 		to_chat(user, span_warning("This creature is too aggressive to capture."))
 		return
-	to_chat(user, span_notice("You store [vac_target] in the capture device."))
-	store(vac_target)
+	to_chat(user, span_notice("You store [vac_target] in the vacpack."))
+	store(vac_target, user)
 
-/obj/item/vacpack_nozzle/attack_self(mob/user)
-	if(contents.len)
-		to_chat(user, span_notice("You open the capture device!"))
-		release()
-	else
-		to_chat(user, span_warning("The device is empty..."))
-
-/obj/item/vacpack_nozzle/proc/store(mob/living/vac_target)
+/obj/item/vacpack_nozzle/proc/store(mob/living/vac_target, mob/living/user)
 	vac_target.forceMove(src)
 	vac_target.add_traits(traits_on_transfer, ABSTRACT_ITEM_TRAIT)
 	vac_target.cancel_camera()
 
-/obj/item/vacpack_nozzle/proc/release()
+/obj/item/vacpack_nozzle/proc/release(atom/target, mob/user)
 	for(var/mob/living/vac_target in contents)
 		vac_target.forceMove(get_turf(loc))
 		vac_target.remove_traits(traits_on_transfer, ABSTRACT_ITEM_TRAIT)
 		vac_target.cancel_camera()
+		vac_target.throw_at(target, 5 , 2 , user)
