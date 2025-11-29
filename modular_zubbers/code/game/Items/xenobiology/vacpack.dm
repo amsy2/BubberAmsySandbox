@@ -159,9 +159,20 @@
 
 /obj/item/vacpack_nozzle/proc/release(atom/target, mob/user)
 	var/mob/living/vac_target = contents[contents.len]
+	vac_target.apply_status_effect(/datum/status_effect/vacpack_toss)  //So you can toss slimes into pens even if theres a slime in the way
 	vac_target.forceMove(get_turf(loc))
 	vac_target.remove_traits(traits_on_transfer, ABSTRACT_ITEM_TRAIT)
 	vac_target.cancel_camera()
 	vac_target.throw_at(target, 5 , 2 , user)
 
-	
+/datum/status_effect/vacpack_toss
+	id = "vacpacktoss"
+	status_type = STATUS_EFFECT_REFRESH
+	duration = 5 SECONDS
+	alert_type = /atom/movable/screen/alert/status_effect/crucible_soul
+
+/datum/status_effect/vacpack_toss/on_apply()
+	owner.pass_flags |= PASSMOB
+
+/datum/status_effect/vacpack_toss/on_remove()
+	owner.pass_flags &= ~(PASSMOB)
