@@ -158,7 +158,7 @@
 	vac_target.cancel_camera()
 
 /datum/status_effect/vacpack_toss
-	id = "vacpacktoss"
+	id = "vacpack_toss"
 	duration = 5  //temp value for tests, turn back down before PRing
 	alert_type = /atom/movable/screen/alert/status_effect/crucible_soul
 
@@ -173,7 +173,7 @@
 	vac_target.forceMove(get_turf(loc))
 	vac_target.remove_traits(traits_on_transfer, ABSTRACT_ITEM_TRAIT)
 	vac_target.cancel_camera()
-	vac_target.apply_status_effect(/datum/status_effect/vacpack_toss)  //So you can toss slimes into pens even if theres another slime in the way
+	vac_target.apply_status_effect(/datum/status_effect/vacpack_toss, 5 SECONDS)  //So you can toss slimes into pens even if theres another slime in the way
 	vac_target.throw_at(target, 5 , 2 , user)
 
 
