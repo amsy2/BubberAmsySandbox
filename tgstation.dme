@@ -4533,6 +4533,7 @@
 #include "code\modules\fishing\sources\subtypes\mining_ruins.dm"
 #include "code\modules\fishing\sources\subtypes\rifts.dm"
 #include "code\modules\fishing\sources\subtypes\structures.dm"
+#include "code\modules\fishing\sources\subtypes\supermatter.dm"
 #include "code\modules\fishing\sources\subtypes\surgery.dm"
 #include "code\modules\fishing\sources\subtypes\turfs.dm"
 #include "code\modules\flufftext\dreaming.dm"

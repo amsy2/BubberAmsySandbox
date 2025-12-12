@@ -212,12 +212,15 @@
 		return ITEM_INTERACT_BLOCKING
 	attackby_hit(source, tool, user)
 
-/datum/component/supermatter_crystal/proc/bumped_hit(datum/source, atom/movable/hit_object)
+/datum/component/supermatter_crystal/proc/bumped_hit(datum/source, atom/movable/hit_object) // Thrown items and walking mobs but not projectiles
 	SIGNAL_HANDLER
 	if(isliving(hit_object))
 		var/mob/living/hit_mob = hit_object
 		if(hit_mob.incorporeal_move || HAS_TRAIT(hit_mob, TRAIT_GODMODE))
 			return
+	if(istype(hit_object, /obj/item/fishing_hook/hypernob))
+		return
+
 	var/atom/atom_source = source
 	var/obj/machinery/power/supermatter_crystal/our_supermatter = parent // Why is this a component?
 	if(istype(our_supermatter))

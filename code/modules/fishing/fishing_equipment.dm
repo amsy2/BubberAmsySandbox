@@ -324,6 +324,13 @@
 		var/mob/living/living_target = target
 		living_target.apply_status_effect(/datum/status_effect/grouped/hooked/jaws, rod.fishing_line)
 
+/obj/item/fishing_hook/hypernob
+	name = "hypernobilium hook"
+	icon_state = "weighted"
+	fishing_hook_traits = FISHING_HOOK_WEIGHTED
+	rod_overlay_icon_state = "hook_weighted_overlay"
+	wiki_desc = "It reduces the bounce that happens when you hit the boundaries of the minigame bar."
+
 ///Used to give the average player info about fishing stuff that's unknown to many.
 /obj/item/paper/paperslip/fishing_tip
 	name = "fishing tip"

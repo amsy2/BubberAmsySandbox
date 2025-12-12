@@ -18,6 +18,8 @@
 	else if (istype(projectile, /obj/projectile/kiss))
 		kiss_power = 60
 
+	if (istype(projectile, /obj/projectile/fishing_cast))
+		return NONE
 
 	if(!istype(projectile.firer, /obj/machinery/power/emitter))
 		investigate_log("has been hit by [projectile] fired by [key_name(projectile.firer)]", INVESTIGATE_ENGINE)
